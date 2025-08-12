@@ -7,6 +7,7 @@
     <meta name="theme-color" content="#5b21b6" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Bean's To-Do List 💜</title>
+
     <style>
       :root {
         --soft-purple: #a78bfa;
@@ -108,13 +109,17 @@
         align-items: center;
         padding: 0.5rem 1rem;
         box-shadow: 0 2px 6px rgb(90 62 142 / 0.15);
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
       }
       li.completed label {
         text-decoration: line-through;
         color: var(--gray);
       }
       #daily-list li.completed label {
-        color: #6b46c1; /* slightly purple tinted gray */
+        color: #6b46c1;
       }
       input[type="checkbox"] {
         width: 20px;
@@ -140,13 +145,26 @@
       .delete-btn:hover {
         color: var(--dark-purple);
       }
+      .drag-handle {
+        cursor: grab;
+        font-size: 1.3rem;
+        padding: 0 0.5rem;
+        color: var(--soft-purple);
+        user-select: none;
+        transition: color 0.3s ease;
+        margin-left: 0.3rem;
+      }
+      .drag-handle:active {
+        cursor: grabbing;
+        color: var(--dark-purple);
+      }
       #clear-today-btn {
         margin-top: 0.5rem;
         align-self: center;
         width: 100%;
         max-width: 200px;
         position: relative;
-        z-index: 1; /* above confetti container */
+        z-index: 1;
       }
       #error-message {
         margin-top: 0.25rem;
@@ -155,12 +173,10 @@
         text-align: center;
         display: none;
       }
-
-      /* CONFETTI CONTAINER */
       #confetti-container {
         pointer-events: none;
         position: fixed;
-        bottom: 110px; /* above button */
+        bottom: 110px;
         left: 50%;
         transform: translateX(-50%);
         width: 200px;
@@ -179,7 +195,6 @@
         animation-fill-mode: forwards;
         animation-timing-function: ease-out;
       }
-
       @keyframes confetti-burst {
         0% {
           transform: translate(0, 0) rotate(0deg);
@@ -193,8 +208,6 @@
           opacity: 0;
         }
       }
-
-      /* Encouragement message styling */
       #encouragement-message {
         text-align: center;
         font-weight: 700;
@@ -203,7 +216,52 @@
         display: none;
         font-size: 1.2rem;
       }
-
+      body.dark-mode {
+        --soft-purple: #6b46c1;
+        --lighter-purple: #2d2a42;
+        --dark-purple: #c6b9ff;
+        --gray: #bbb;
+        --error-red: #f25c54;
+        background: var(--lighter-purple);
+        color: var(--dark-purple);
+      }
+      body.dark-mode input[type="text"],
+      body.dark-mode select {
+        border-color: var(--soft-purple);
+        background: #3b3756;
+        color: var(--dark-purple);
+      }
+      body.dark-mode li {
+        background: #3b3756;
+        box-shadow: 0 2px 6px rgba(183, 145, 255, 0.3);
+      }
+      body.dark-mode li.completed label {
+        color: var(--gray);
+      }
+      body.dark-mode button {
+        background: var(--soft-purple);
+        color: var(--dark-purple);
+      }
+      #dark-mode-toggle {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        background: var(--soft-purple);
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        padding: 0.35rem 0.5rem;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgb(107 70 193 / 0.5);
+        transition: background-color 0.3s ease;
+        z-index: 10000;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
       @media (max-width: 480px) {
         body {
           padding: 0.5rem;
@@ -250,6 +308,18 @@
       <div id="encouragement-message" aria-live="polite"></div>
     </section>
 
+    <!-- Dark mode toggle button -->
+    <button
+      id="dark-mode-toggle"
+      aria-label="Toggle dark mode"
+      title="Toggle dark mode"
+    >
+      🌙
+    </button>
+
+    <!-- Include SortableJS from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
     <script>
       const form = document.getElementById("todo-form");
       const input = document.getElementById("todo-input");
@@ -262,6 +332,7 @@
       const encouragementMsgEl = document.getElementById(
         "encouragement-message"
       );
+      const darkModeToggle = document.getElementById("dark-mode-toggle");
 
       // Use localStorage keys
       const DAILY_KEY = "tasks_daily";
@@ -322,17 +393,70 @@
             renderAll();
           });
 
+          // Drag handle element
+          const dragHandle = document.createElement("span");
+          dragHandle.className = "drag-handle";
+          dragHandle.title = "Drag to reorder";
+          dragHandle.textContent = "≡";
+
           li.appendChild(checkbox);
           li.appendChild(label);
           li.appendChild(delBtn);
+          li.appendChild(dragHandle);
 
           listEl.appendChild(li);
+        });
+      }
+
+      // Drag and drop reorder logic with SortableJS
+      function enableDragAndDrop() {
+        // Destroy previous Sortable instances if any to avoid duplicates
+        if (dailyListEl.sortableInstance)
+          dailyListEl.sortableInstance.destroy();
+        if (todayListEl.sortableInstance)
+          todayListEl.sortableInstance.destroy();
+
+        dailyListEl.sortableInstance = new Sortable(dailyListEl, {
+          animation: 150,
+          handle: ".drag-handle",
+          scroll: true,
+          scrollSensitivity: 60,
+          scrollSpeed: 10,
+          onEnd: () => {
+            const newOrderIds = Array.from(dailyListEl.children).map(
+              (li) => li.dataset.id
+            );
+            dailyTasks = newOrderIds.map((id) =>
+              dailyTasks.find((t) => t.id === id)
+            );
+            saveDailyTasks();
+            renderAll();
+          },
+        });
+
+        todayListEl.sortableInstance = new Sortable(todayListEl, {
+          animation: 150,
+          handle: ".drag-handle",
+          scroll: true,
+          scrollSensitivity: 60,
+          scrollSpeed: 10,
+          onEnd: () => {
+            const newOrderIds = Array.from(todayListEl.children).map(
+              (li) => li.dataset.id
+            );
+            todayTasks = newOrderIds.map((id) =>
+              todayTasks.find((t) => t.id === id)
+            );
+            saveTodayTasks();
+            renderAll();
+          },
         });
       }
 
       function renderAll() {
         renderTasks(dailyListEl, dailyTasks, true);
         renderTasks(todayListEl, todayTasks, false);
+        enableDragAndDrop();
       }
 
       form.addEventListener("submit", (e) => {
@@ -361,7 +485,6 @@
       });
 
       function getRandomColor() {
-        // Return a random pastel-ish color in HSL format for nice brightness
         const hue = Math.floor(Math.random() * 360);
         return `hsl(${hue}, 70%, 70%)`;
       }
@@ -370,8 +493,8 @@
         const burstsCount = 30;
 
         const baseXRange = [window.innerWidth * 0.15, window.innerWidth * 0.85];
-        const minY = window.innerHeight * 0.3; // 30% down screen
-        const maxY = window.innerHeight * 0.75; // 75% down screen
+        const minY = window.innerHeight * 0.3;
+        const maxY = window.innerHeight * 0.75;
 
         for (let b = 0; b < burstsCount; b++) {
           const x =
@@ -434,25 +557,20 @@
           return;
         }
 
-        // Clear today's tasks
         todayTasks = [];
         saveTodayTasks();
 
-        // Uncheck all daily tasks
         dailyTasks = dailyTasks.map((task) => ({ ...task, completed: false }));
         saveDailyTasks();
 
         hideErrorMsg();
         renderAll();
 
-        // Show confetti celebration!
         showRandomMultiConfetti();
 
-        // Show encouragement message
         encouragementMsgEl.textContent = "Proud of you, Bean!";
         encouragementMsgEl.style.display = "block";
 
-        // Hide message after 4 seconds
         setTimeout(() => {
           encouragementMsgEl.style.display = "none";
         }, 4000);
@@ -467,7 +585,29 @@
         errorMsgEl.style.display = "none";
       }
 
-      // Initial render
+      // DARK MODE TOGGLE LOGIC
+      const savedDarkMode = localStorage.getItem("darkMode") === "true";
+
+      function applyDarkMode(isDark) {
+        if (isDark) {
+          document.body.classList.add("dark-mode");
+          darkModeToggle.textContent = "☀️";
+          darkModeToggle.title = "Switch to light mode";
+        } else {
+          document.body.classList.remove("dark-mode");
+          darkModeToggle.textContent = "🌙";
+          darkModeToggle.title = "Switch to dark mode";
+        }
+      }
+
+      applyDarkMode(savedDarkMode);
+
+      darkModeToggle.addEventListener("click", () => {
+        const isDark = document.body.classList.toggle("dark-mode");
+        localStorage.setItem("darkMode", isDark);
+        applyDarkMode(isDark);
+      });
+
       renderAll();
 
       if ("serviceWorker" in navigator) {
