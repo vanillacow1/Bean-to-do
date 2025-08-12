@@ -1,0 +1,15 @@
+{
+  "name": "Bean's To-Do List",
+  "short_name": "Bean's To-Do",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#5b21b6",
+  "theme_color": "#5b21b6",
+  "icons": [
+    {
+      "src": "icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

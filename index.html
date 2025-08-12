@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180x180.png" />
+    <meta name="theme-color" content="#5b21b6" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bean's To-Do List 💜</title>
+    <style>
+      :root {
+        --soft-purple: #a78bfa;
+        --lighter-purple: #ede9fe;
+        --dark-purple: #5b21b6;
+        --gray: #555;
+        --error-red: #d9534f;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: var(--lighter-purple);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 1rem;
+        color: var(--dark-purple);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+      }
+      form {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+      input[type="text"] {
+        flex-grow: 1;
+        padding: 0.6rem 0.8rem;
+        font-size: 1.1rem;
+        border: 2px solid var(--soft-purple);
+        border-radius: 8px;
+        outline: none;
+        transition: border-color 0.3s ease;
+        min-width: 150px;
+      }
+      input[type="text"]:focus {
+        border-color: var(--dark-purple);
+      }
+      select {
+        padding: 0.6rem;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        border: 2px solid var(--soft-purple);
+        background: white;
+        color: var(--dark-purple);
+        cursor: pointer;
+      }
+      select:focus {
+        border-color: var(--dark-purple);
+        outline: none;
+      }
+      button {
+        background: var(--soft-purple);
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 0 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        min-width: 70px;
+      }
+      button:hover {
+        background: var(--dark-purple);
+      }
+      section {
+        flex-grow: 1;
+        overflow-y: auto;
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+        border-radius: 12px;
+        box-shadow: 0 3px 8px rgb(90 62 142 / 0.15);
+        background: var(--lighter-purple);
+        border: 2px solid var(--soft-purple);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+      h2 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+      }
+      ul {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+        flex-grow: 1;
+      }
+      li {
+        background: white;
+        margin-bottom: 0.5rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        box-shadow: 0 2px 6px rgb(90 62 142 / 0.15);
+      }
+      li.completed label {
+        text-decoration: line-through;
+        color: var(--gray);
+      }
+      #daily-list li.completed label {
+        color: #6b46c1; /* slightly purple tinted gray */
+      }
+      input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        margin-right: 1rem;
+        cursor: pointer;
+      }
+      label {
+        flex-grow: 1;
+        font-size: 1.1rem;
+        user-select: none;
+      }
+      .delete-btn {
+        background: transparent;
+        border: none;
+        color: var(--soft-purple);
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 1.2rem;
+        padding: 0 0.3rem;
+        transition: color 0.3s ease;
+      }
+      .delete-btn:hover {
+        color: var(--dark-purple);
+      }
+      #clear-today-btn {
+        margin-top: 0.5rem;
+        align-self: center;
+        width: 100%;
+        max-width: 200px;
+        position: relative;
+        z-index: 1; /* above confetti container */
+      }
+      #error-message {
+        margin-top: 0.25rem;
+        color: var(--error-red);
+        font-weight: 600;
+        text-align: center;
+        display: none;
+      }
+
+      /* CONFETTI CONTAINER */
+      #confetti-container {
+        pointer-events: none;
+        position: fixed;
+        bottom: 110px; /* above button */
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+        height: 150px;
+        overflow: visible;
+        z-index: 9999;
+        display: none;
+      }
+      .confetti {
+        position: absolute;
+        width: 10px;
+        height: 6px;
+        background-color: var(--soft-purple);
+        opacity: 0.9;
+        border-radius: 2px;
+        animation-fill-mode: forwards;
+        animation-timing-function: ease-out;
+      }
+
+      @keyframes confetti-burst {
+        0% {
+          transform: translate(0, 0) rotate(0deg);
+          opacity: 1;
+        }
+        80% {
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--x-move), var(--y-move)) rotate(720deg);
+          opacity: 0;
+        }
+      }
+
+      /* Encouragement message styling */
+      #encouragement-message {
+        text-align: center;
+        font-weight: 700;
+        color: var(--dark-purple);
+        margin-top: 0.5rem;
+        display: none;
+        font-size: 1.2rem;
+      }
+
+      @media (max-width: 480px) {
+        body {
+          padding: 0.5rem;
+        }
+        input[type="text"],
+        select,
+        button {
+          font-size: 1rem;
+        }
+        #clear-today-btn {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Bean's To-Do List 💜</h1>
+    <form id="todo-form">
+      <input
+        type="text"
+        id="todo-input"
+        placeholder="Add a new task..."
+        autocomplete="off"
+        required
+      />
+      <select id="task-type" aria-label="Task type">
+        <option value="daily">Daily</option>
+        <option value="today" selected>Today</option>
+      </select>
+      <button type="submit">Add</button>
+    </form>
+
+    <section id="daily-section" aria-label="Daily tasks section">
+      <h2>Daily Tasks</h2>
+      <ul id="daily-list"></ul>
+    </section>
+
+    <section id="today-section" aria-label="Today's tasks section">
+      <h2>Today's Tasks</h2>
+      <ul id="today-list"></ul>
+      <button id="clear-today-btn" type="button">I did it!</button>
+      <div id="error-message" role="alert"></div>
+      <div id="confetti-container" aria-hidden="true"></div>
+      <div id="encouragement-message" aria-live="polite"></div>
+    </section>
+
+    <script>
+      const form = document.getElementById("todo-form");
+      const input = document.getElementById("todo-input");
+      const taskTypeSelect = document.getElementById("task-type");
+      const dailyListEl = document.getElementById("daily-list");
+      const todayListEl = document.getElementById("today-list");
+      const clearTodayBtn = document.getElementById("clear-today-btn");
+      const errorMsgEl = document.getElementById("error-message");
+      const confettiContainer = document.getElementById("confetti-container");
+      const encouragementMsgEl = document.getElementById(
+        "encouragement-message"
+      );
+
+      // Use localStorage keys
+      const DAILY_KEY = "tasks_daily";
+      const TODAY_KEY = "tasks_today";
+
+      // Load Daily tasks
+      let dailyTasks = JSON.parse(localStorage.getItem(DAILY_KEY) || "[]");
+
+      // Load Today tasks
+      let todayTasks = JSON.parse(localStorage.getItem(TODAY_KEY) || "[]");
+
+      // Save functions
+      function saveDailyTasks() {
+        localStorage.setItem(DAILY_KEY, JSON.stringify(dailyTasks));
+      }
+      function saveTodayTasks() {
+        localStorage.setItem(TODAY_KEY, JSON.stringify(todayTasks));
+      }
+
+      function renderTasks(listEl, tasks, isDaily) {
+        listEl.innerHTML = "";
+        tasks.forEach(({ id, text, completed }) => {
+          const li = document.createElement("li");
+          li.className = completed ? "completed" : "";
+          li.dataset.id = id;
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = completed;
+          checkbox.addEventListener("change", () => {
+            const taskArray = isDaily ? dailyTasks : todayTasks;
+            const task = taskArray.find((t) => t.id === id);
+            if (task) {
+              task.completed = checkbox.checked;
+              if (isDaily) saveDailyTasks();
+              else saveTodayTasks();
+              hideErrorMsg();
+              renderAll();
+            }
+          });
+
+          const label = document.createElement("label");
+          label.textContent = text;
+
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "×";
+          delBtn.className = "delete-btn";
+          delBtn.title = "Delete task";
+          delBtn.addEventListener("click", () => {
+            if (isDaily) {
+              dailyTasks = dailyTasks.filter((t) => t.id !== id);
+              saveDailyTasks();
+            } else {
+              todayTasks = todayTasks.filter((t) => t.id !== id);
+              saveTodayTasks();
+            }
+            hideErrorMsg();
+            renderAll();
+          });
+
+          li.appendChild(checkbox);
+          li.appendChild(label);
+          li.appendChild(delBtn);
+
+          listEl.appendChild(li);
+        });
+      }
+
+      function renderAll() {
+        renderTasks(dailyListEl, dailyTasks, true);
+        renderTasks(todayListEl, todayTasks, false);
+      }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        const task = {
+          id: Date.now().toString(),
+          text,
+          completed: false,
+        };
+
+        if (taskTypeSelect.value === "daily") {
+          dailyTasks.push(task);
+          saveDailyTasks();
+        } else {
+          todayTasks.push(task);
+          saveTodayTasks();
+        }
+
+        hideErrorMsg();
+        renderAll();
+        input.value = "";
+        input.focus();
+      });
+
+      function getRandomColor() {
+        // Return a random pastel-ish color in HSL format for nice brightness
+        const hue = Math.floor(Math.random() * 360);
+        return `hsl(${hue}, 70%, 70%)`;
+      }
+
+      function showRandomMultiConfetti() {
+        const burstsCount = 30;
+
+        const baseXRange = [window.innerWidth * 0.15, window.innerWidth * 0.85];
+        const minY = window.innerHeight * 0.3; // 30% down screen
+        const maxY = window.innerHeight * 0.75; // 75% down screen
+
+        for (let b = 0; b < burstsCount; b++) {
+          const x =
+            baseXRange[0] + Math.random() * (baseXRange[1] - baseXRange[0]);
+          const y = minY + Math.random() * (maxY - minY);
+
+          const container = document.createElement("div");
+          container.style.position = "fixed";
+          container.style.left = `${x}px`;
+          container.style.top = `${y}px`;
+          container.style.width = "0px";
+          container.style.height = "0px";
+          container.style.pointerEvents = "none";
+          container.style.overflow = "visible";
+          container.style.zIndex = 9999;
+
+          const piecesPerBurst = 15 + Math.floor(Math.random() * 16);
+
+          for (let i = 0; i < piecesPerBurst; i++) {
+            const piece = document.createElement("div");
+            piece.classList.add("confetti");
+
+            piece.style.backgroundColor = getRandomColor();
+
+            const angle = Math.random() * 2 * Math.PI;
+            const distance = 100 + Math.random() * 150;
+            const xMove = Math.cos(angle) * distance + "px";
+            const yMove = Math.sin(angle) * distance + "px";
+
+            piece.style.setProperty("--x-move", xMove);
+            piece.style.setProperty("--y-move", yMove);
+
+            const duration = 1.3 + Math.random();
+            piece.style.animation = `confetti-burst ${duration}s ease-out forwards`;
+
+            const sizeX = 6 + Math.random() * 6;
+            const sizeY = 4 + Math.random() * 4;
+            piece.style.width = `${sizeX}px`;
+            piece.style.height = `${sizeY}px`;
+
+            container.appendChild(piece);
+          }
+
+          const delay = Math.random() * 1000;
+          setTimeout(() => {
+            document.body.appendChild(container);
+            setTimeout(() => {
+              container.remove();
+            }, 2500);
+          }, delay);
+        }
+      }
+
+      clearTodayBtn.addEventListener("click", () => {
+        const allDailyChecked = dailyTasks.every((t) => t.completed);
+        const allTodayChecked = todayTasks.every((t) => t.completed);
+
+        if (!allDailyChecked || !allTodayChecked) {
+          showErrorMsg("Still more work to do! You got this");
+          return;
+        }
+
+        // Clear today's tasks
+        todayTasks = [];
+        saveTodayTasks();
+
+        // Uncheck all daily tasks
+        dailyTasks = dailyTasks.map((task) => ({ ...task, completed: false }));
+        saveDailyTasks();
+
+        hideErrorMsg();
+        renderAll();
+
+        // Show confetti celebration!
+        showRandomMultiConfetti();
+
+        // Show encouragement message
+        encouragementMsgEl.textContent = "Proud of you, Bean!";
+        encouragementMsgEl.style.display = "block";
+
+        // Hide message after 4 seconds
+        setTimeout(() => {
+          encouragementMsgEl.style.display = "none";
+        }, 4000);
+      });
+
+      function showErrorMsg(msg) {
+        errorMsgEl.textContent = msg;
+        errorMsgEl.style.display = "block";
+      }
+      function hideErrorMsg() {
+        errorMsgEl.textContent = "";
+        errorMsgEl.style.display = "none";
+      }
+
+      // Initial render
+      renderAll();
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("service-worker.js")
+            .then(() => console.log("Service Worker registered"))
+            .catch((err) =>
+              console.error("Service Worker registration failed:", err)
+            );
+        });
+      }
+    </script>
+  </body>
+</html>
