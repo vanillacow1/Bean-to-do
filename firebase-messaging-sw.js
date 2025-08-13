@@ -1,9 +1,8 @@
 // firebase-messaging-sw.js
-importScripts("https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js");
-importScripts(
-  "https://www.gstatic.com/firebasejs/12.1.0/firebase-messaging.js"
-);
+importScripts("https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/12.1.0/firebase-messaging-compat.js");
 
+// Initialize Firebase app in the service worker
 firebase.initializeApp({
   apiKey: "AIzaSyDwuelTrnNPJzo6ie76fq8wBnuo_6tqvNE",
   authDomain: "bean-to-do-push.firebaseapp.com",
@@ -14,17 +13,24 @@ firebase.initializeApp({
   measurementId: "G-DGDZD13KX3",
 });
 
+// Retrieve an instance of Firebase Messaging
 const messaging = firebase.messaging();
 
+// Background message handler
 messaging.onBackgroundMessage(function (payload) {
   console.log(
     "[firebase-messaging-sw.js] Received background message ",
     payload
   );
+
   const notificationTitle =
-    payload.notification.title || "Background Message Title";
+    (payload.notification && payload.notification.title) ||
+    "Background Message Title";
+
   const notificationOptions = {
-    body: payload.notification.body || "Background Message body.",
+    body:
+      (payload.notification && payload.notification.body) ||
+      "Background Message body.",
     icon: "/icon-180x180.png",
   };
 
